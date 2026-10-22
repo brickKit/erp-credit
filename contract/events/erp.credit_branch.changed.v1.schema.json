@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brickkit.dev/erp-credit/events/erp.credit_branch.changed.v1.schema.json",
+  "title": "erp.credit_branch.changed.v1",
+  "description": "A credit reservation branch (protocol 04; a full-state event, overwritable). The record ID is the branch ID the coordinator generated.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "partner_id",
+    "legal_entity_id",
+    "currency",
+    "amount",
+    "consumed",
+    "reference",
+    "state",
+    "reason",
+    "hold_expires_at",
+    "version",
+    "updated_at"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "partner_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid",
+      "description": "null on a tombstone"
+    },
+    "legal_entity_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid"
+    },
+    "currency": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "amount": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "description": "a non-negative decimal string in the currency"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "consumed": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "description": "a non-negative decimal string in the currency"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "reference": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "id"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "revision": {
+              "type": "integer"
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "state": {
+      "enum": [
+        "held",
+        "committed",
+        "consumed",
+        "released",
+        "expired",
+        "rejected",
+        "cancelled"
+      ]
+    },
+    "reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "hold_expires_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

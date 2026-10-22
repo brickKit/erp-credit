@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brickkit.dev/erp-credit/events/erp.credit_policy.changed.v1.schema.json",
+  "title": "erp.credit_policy.changed.v1",
+  "description": "A legal entity's credit policy for customers without a limit in a currency (a full-state event); the record ID is the legal entity's ID.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "legal_entity_id",
+    "without_limit",
+    "version",
+    "updated_at"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "legal_entity_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "without_limit": {
+      "enum": [
+        "block",
+        "unlimited"
+      ]
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

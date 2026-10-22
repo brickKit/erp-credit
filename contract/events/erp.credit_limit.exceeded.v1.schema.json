@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brickkit.dev/erp-credit/events/erp.credit_limit.exceeded.v1.schema.json",
+  "title": "erp.credit_limit.exceeded.v1",
+  "description": "A hold refused for over_limit (an incremental fact, deduped by fact_id = the branch ID): for notifications to the credit manager.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "fact_id",
+    "partner_id",
+    "legal_entity_id",
+    "currency",
+    "requested",
+    "available",
+    "reference",
+    "occurred_at"
+  ],
+  "properties": {
+    "fact_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "partner_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "legal_entity_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "requested": {
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+)?$",
+      "description": "a non-negative decimal string in the currency"
+    },
+    "available": {
+      "type": "string",
+      "pattern": "^-?[0-9]+(\\.[0-9]+)?$"
+    },
+    "reference": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "id"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "revision": {
+              "type": "integer"
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brickkit.dev/erp-credit/events/erp.credit_limit.changed.v1.schema.json",
+  "title": "erp.credit_limit.changed.v1",
+  "description": "A customer's credit in one legal entity and currency (a full-state event, sent on every change of exposure). limit null: not under credit control (held and counted, never refused).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "partner_id",
+    "legal_entity_id",
+    "currency",
+    "limit",
+    "state",
+    "order_exposure",
+    "receivable_exposure",
+    "used",
+    "available",
+    "receivables_tracked",
+    "version",
+    "updated_at"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "partner_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "legal_entity_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "limit": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "description": "a non-negative decimal string in the currency"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "state": {
+      "enum": [
+        "active",
+        "suspended"
+      ]
+    },
+    "order_exposure": {
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+)?$",
+      "description": "a non-negative decimal string in the currency"
+    },
+    "receivable_exposure": {
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+)?$",
+      "description": "a non-negative decimal string in the currency"
+    },
+    "used": {
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+)?$",
+      "description": "a non-negative decimal string in the currency"
+    },
+    "available": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+          "description": "negative after the limit was lowered below what is used"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "receivables_tracked": {
+      "type": "boolean",
+      "description": "false in this version (protocol 05's conversion is later)"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

@@ -1,0 +1,168 @@
+openapi: 3.1.0
+info:
+  title: erp/credit user surface
+  version: 3.0.0
+  description: >-
+    Credit policies and limits for people and the front end. Every route needs a platform access token and the
+    operation in x-operation; what the caller may not see answers 404 (policies and limits carry the legal entity
+    dimension). Errors are application/problem+json with a reason. Lists page by cursor only (protocol 14). Amounts are
+    decimal strings. Temporary limits and exception approvals are in the contract but not in this version: they answer
+    CAPABILITY_UNSUPPORTED (D75). Reservation branches are on the system surface (proto).
+paths:
+  /api/credit/policies:
+    get:
+      operationId: listPolicies
+      x-operation: erp.credit.policy.read
+      parameters:
+        - $ref: '#/components/parameters/cursor'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: one page, by legal entity
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [policies, next_cursor]
+                properties:
+                  policies: {type: array, items: {$ref: '#/components/schemas/Policy'}}
+                  next_cursor: {type: string}
+        default: {$ref: '#/components/responses/problem'}
+  /api/credit/policies/{legal_entity_id}:
+    parameters:
+      - {name: legal_entity_id, in: path, required: true, schema: {type: string, format: uuid}}
+    get:
+      operationId: getPolicy
+      x-operation: erp.credit.policy.read
+      responses:
+        '200': {description: the policy (a legal entity without one answers block, version 0), content: {application/json: {schema: {$ref: '#/components/schemas/Policy'}}}}
+        default: {$ref: '#/components/responses/problem'}
+    put:
+      operationId: setPolicy
+      x-operation: erp.credit.policy.manage
+      summary: Set the legal entity's policy for customers without a limit; the legal entity must be active
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [without_limit]
+              properties:
+                without_limit: {enum: [block, unlimited]}
+                version: {type: integer, minimum: 0, description: 'only that version; 0: only when there is none'}
+      responses:
+        '200': {description: the policy, content: {application/json: {schema: {$ref: '#/components/schemas/Policy'}}}}
+        default: {$ref: '#/components/responses/problem'}
+  /api/credit/limits:
+    get:
+      operationId: listLimits
+      x-operation: erp.credit.limit.read
+      parameters:
+        - {name: partner_id, in: query, schema: {type: string, format: uuid}}
+        - {name: legal_entity_id, in: query, schema: {type: string, format: uuid}}
+        - {name: currency, in: query, schema: {type: string, pattern: '^[A-Z]{3}$'}}
+        - {name: state, in: query, schema: {enum: [active, suspended]}}
+        - {name: over_limit, in: query, schema: {type: boolean}, description: only limits whose available is below zero}
+        - $ref: '#/components/parameters/cursor'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: one page, by partner, legal entity and currency
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [limits, next_cursor]
+                properties:
+                  limits: {type: array, items: {$ref: '#/components/schemas/Limit'}}
+                  next_cursor: {type: string}
+        default: {$ref: '#/components/responses/problem'}
+    post:
+      operationId: createLimit
+      x-operation: erp.credit.limit.manage
+      summary: >-
+        Set a customer's limit in a legal entity and currency; needs an Idempotency-Key. The partner must be eligible
+        to sell in the legal entity (its customer role active); limit null puts the customer outside credit control.
+      parameters:
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [partner_id, legal_entity_id, currency, limit]
+              properties:
+                partner_id: {type: string, format: uuid}
+                legal_entity_id: {type: string, format: uuid}
+                currency: {type: string, pattern: '^[A-Z]{3}$'}
+                limit: {anyOf: [{$ref: '#/components/schemas/Amount'}, {type: 'null'}]}
+      responses:
+        '200': {description: the limit, content: {application/json: {schema: {$ref: '#/components/schemas/Limit'}}}}
+        default: {$ref: '#/components/responses/problem'}
+  /api/credit/limits/{id}:
+    parameters: [{$ref: '#/components/parameters/id'}]
+    get:
+      operationId: getLimit
+      x-operation: erp.credit.limit.read
+      responses:
+        '200': {description: the limit with its exposure, content: {application/json: {schema: {$ref: '#/components/schemas/Limit'}}}}
+        default: {$ref: '#/components/responses/problem'}
+    patch:
+      operationId: updateLimit
+      x-operation: erp.credit.limit.manage
+      summary: Change the amount (may go below what is used; only later holds see it), suspend or resume; with version, only that version
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                limit: {anyOf: [{$ref: '#/components/schemas/Amount'}, {type: 'null'}]}
+                state: {enum: [active, suspended]}
+                version: {type: integer, minimum: 1}
+      responses:
+        '200': {description: the limit, content: {application/json: {schema: {$ref: '#/components/schemas/Limit'}}}}
+        default: {$ref: '#/components/responses/problem'}
+  /api/credit/limits/{id}/temporary-increases:
+    parameters: [{$ref: '#/components/parameters/id'}]
+    post:
+      operationId: requestTemporaryIncrease
+      x-operation: erp.credit.limit.request
+      summary: Ask for a temporary limit or an exception release, approved in this component (not in this version, CAPABILITY_UNSUPPORTED)
+      parameters:
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object}}}
+      responses:
+        default: {$ref: '#/components/responses/problem'}
+  /api/credit/branches/{id}:
+    parameters: [{$ref: '#/components/parameters/id'}]
+    get:
+      operationId: getBranch
+      x-operation: erp.credit.limit.read
+      responses:
+        '200': {description: the reservation branch, content: {application/json: {schema: {$ref: '#/components/schemas/Branch'}}}}
+        default: {$ref: '#/components/responses/problem'}
+components:
+  parameters:
+    id: {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    cursor: {name: cursor, in: query, schema: {type: string}}
+    limit: {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 50}}
+  responses:
+    problem:
+      description: an error (application/problem+json with reason)
+      content:
+        application/problem+json:
+          schema: {type: object, required: [reason], properties: {reason: {type: string}, detail: {type: string}}}
+  schemas:
+    Amount: {type: string, pattern: '^[0-9]+(\.[0-9]+)?$', description: a decimal string in the limit's currency}
+    Policy: {$ref: 'events/erp.credit_policy.changed.v1.schema.json'}
+    Limit: {$ref: 'events/erp.credit_limit.changed.v1.schema.json'}
+    Branch: {$ref: 'events/erp.credit_branch.changed.v1.schema.json'}

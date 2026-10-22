@@ -1,0 +1,160 @@
+// The system surface of erp/credit: the participant commands of protocol 04 (reservation branches, the same shape as
+// erp/inventory's) and the available credit. Coordinators (erp/sales) call it with their service identity; it never
+// filters by a user. Amounts are decimal strings in the branch's currency (protocol 14), never floats. The user surface
+// is REST (../../../../../openapi.yaml); the event payloads are ../../../../../events/.
+syntax = "proto3";
+
+package be.erp.credit.v3;
+
+option go_package = "github.com/brickKit/erp-credit/contract/v3/gen/go/be/erp/credit/v3;creditv3";
+
+// ReservationService holds credit for one order confirmation as a branch (protocol 04). Every command carries the
+// branch ID the coordinator generated and is idempotent by it: the same ID and content answer the first result, the
+// same ID with other content is refused (RS17).
+service ReservationService {
+  // Hold takes the amount from the limit of (partner, legal entity, currency), never converted. Over the limit, no
+  // limit under a block policy, or a suspended limit answers BRANCH_STATE_REJECTED with the reason. A customer not
+  // under credit control (a limit with no amount) is held and counted, never refused. A branch the coordinator
+  // cancelled before is a tombstone: a late Hold answers BRANCH_STATE_CANCELLED (RS04).
+  rpc Hold(HoldRequest) returns (HoldResponse);
+  // Confirm turns a held branch into a committed one, which never expires; an expired branch is not revived.
+  rpc Confirm(ConfirmRequest) returns (ConfirmResponse);
+  // Cancel releases what the branch has not consumed; an unknown branch becomes a tombstone.
+  rpc Cancel(CancelRequest) returns (CancelResponse);
+  // Query answers the branch as it is; an unknown branch answers BRANCH_STATE_ABSENT (and leaves no tombstone).
+  rpc Query(QueryRequest) returns (QueryResponse);
+  // Consume takes an amount off a committed branch, idempotent by consumption_id (later: in the same transaction the
+  // receivable exposure grows by it, protocol 05).
+  rpc Consume(ConsumeRequest) returns (ConsumeResponse);
+  // Adjust applies an order revision (protocol 04); not in this version: CAPABILITY_UNSUPPORTED.
+  rpc Adjust(AdjustRequest) returns (AdjustResponse);
+}
+
+// CreditService answers what a coordinator shows before it asks.
+service CreditService {
+  // Available answers the limit, exposure and available credit of (partner, legal entity, currency).
+  rpc Available(AvailableRequest) returns (AvailableResponse);
+}
+
+enum BranchState {
+  BRANCH_STATE_UNSPECIFIED = 0;
+  BRANCH_STATE_HELD = 1;
+  BRANCH_STATE_COMMITTED = 2;
+  BRANCH_STATE_CONSUMED = 3;
+  BRANCH_STATE_RELEASED = 4;
+  BRANCH_STATE_EXPIRED = 5;
+  BRANCH_STATE_REJECTED = 6;
+  // the tombstone of a cancel that came before the hold
+  BRANCH_STATE_CANCELLED = 7;
+  // Query only: no such branch
+  BRANCH_STATE_ABSENT = 8;
+}
+
+// Reference names the coordinator's document; it is recorded, never interpreted.
+message Reference {
+  // e.g. "sales_order"
+  string kind = 1;
+  string id = 2;
+  // the document's revision the branch was made for
+  int64 revision = 3;
+}
+
+message HoldRequest {
+  string branch_id = 1;
+  string partner_id = 2;
+  string legal_entity_id = 3;
+  // ISO 4217
+  string currency = 4;
+  // > 0
+  string amount = 5;
+  Reference reference = 6;
+}
+
+message ConfirmRequest {
+  string branch_id = 1;
+}
+
+message CancelRequest {
+  string branch_id = 1;
+}
+
+message QueryRequest {
+  string branch_id = 1;
+}
+
+message ConsumeRequest {
+  string consumption_id = 1;
+  string branch_id = 2;
+  string amount = 3;
+}
+
+message AdjustRequest {
+  string branch_id = 1;
+  int64 revision = 2;
+  string amount = 3;
+}
+
+// Branch is a branch as it is after the command (every ReservationService command answers it).
+message Branch {
+  string branch_id = 1;
+  BranchState state = 2;
+  // rejected: over_limit, no_limit, limit_suspended; otherwise empty
+  string reason = 3;
+  string partner_id = 4;
+  string legal_entity_id = 5;
+  string currency = 6;
+  string amount = 7;
+  string consumed = 8;
+  // rejected for over_limit: what was available when the hold was decided
+  string available = 9;
+  // RFC 3339; held only
+  string hold_expires_at = 10;
+  int64 version = 11;
+}
+
+message HoldResponse {
+  Branch branch = 1;
+}
+
+message ConfirmResponse {
+  Branch branch = 1;
+}
+
+message CancelResponse {
+  Branch branch = 1;
+}
+
+message QueryResponse {
+  Branch branch = 1;
+}
+
+message ConsumeResponse {
+  Branch branch = 1;
+}
+
+message AdjustResponse {
+  Branch branch = 1;
+}
+
+message AvailableRequest {
+  string partner_id = 1;
+  string legal_entity_id = 2;
+  string currency = 3;
+}
+
+message AvailableResponse {
+  // false: no limit row; policy says what a hold would do
+  bool has_limit = 1;
+  // block or unlimited: the legal entity's policy for a customer without a limit
+  string policy = 2;
+  // empty: not under credit control
+  string limit = 3;
+  string order_exposure = 4;
+  string receivable_exposure = 5;
+  // empty when not under credit control
+  string available = 6;
+  // active or suspended
+  string state = 7;
+  // false in this version: receivables are not tracked yet (protocol 05)
+  bool receivables_tracked = 8;
+}

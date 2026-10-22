@@ -63,12 +63,12 @@
 | 命令或查询 | 面 | 资源与操作 |
 | --- | --- | --- |
 | 预占、确认、取消、查询、消耗（协议 04 的参与方命令） | 系统面 `ReservationService`（与库存同形） | `erp.credit.system.reserve`，只授予声明的协调者（`erp/sales`）的服务身份 |
-| 可用额度的系统读取 | 系统面 | `erp.credit.system.read` |
+| 可用额度的系统读取（`CreditService.Available`） | 系统面 | `erp.credit.system.read` |
 | 额度的建立、修改、停用与恢复（带 `Idempotency-Key`） | 用户面 | `erp.credit.limit` 的 `erp.credit.limit.manage` |
 | 额度列表与单条读取（含已用与可用） | 用户面 | `erp.credit.limit.read` |
 | 法人的信用政策 | 用户面 | `erp.credit.policy` 的 `erp.credit.policy.manage`、`erp.credit.policy.read` |
 | 分支的调整（订单修订） | 系统面 | 以后 |
-| 临时额度与例外放行的申请与审批 | 用户面 | 以后 |
+| 临时额度与例外放行的申请与审批 | 用户面 | 以后（契约已有路径：`erp.credit.limit.request`） |
 | 期初分支与期初应收占用（上线窗口，协议 16） | 系统面 | 以后 |
 
 用户面的资源带法人维度（值集合）。额度的维护以后要求业务确认（受保护的操作，安全 08）；本版只靠操作权限。
@@ -77,9 +77,10 @@
 
 流 `erp.credit`：
 
-- 额度状态：可覆盖的完整状态事件（额度、订单占用、应收占用、可用、状态、版本），每次占用变化都发，供销售显示与报表。
-- 超限：预占因超限被拒绝时发一条（伙伴、法人、币种、请求金额、可用）；通知组件可以订阅提醒信用经理。
-- 预占分支的状态：可覆盖的状态事件。
+- 政策 `erp.credit_policy.changed.v1`：完整状态事件。
+- 额度 `erp.credit_limit.changed.v1`：可覆盖的完整状态事件（额度、订单占用、应收占用、可用、状态、版本），每次占用变化都发，供销售显示与报表。
+- 超限 `erp.credit_limit.exceeded.v1`：预占因超限被拒绝时发一条增量事实（事实身份是分支身份；伙伴、法人、币种、请求金额、可用）；通知组件可以订阅提醒信用经理。
+- 预占分支 `erp.credit_branch.changed.v1`：可覆盖的状态事件。
 
 ## 依赖
 
