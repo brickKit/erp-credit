@@ -85,12 +85,16 @@ func scanPolicy(row pgx.Row) (Policy, error) {
 	return p, err
 }
 
+// receivablesTracked: this version does not consume erp/billing's billed fact, so receivable_exposure stays 0 and
+// "used" is the order exposure only (docs/design.md, implementation status); a limit says so.
+const receivablesTracked = false
+
 func scanLimit(row pgx.Row) (Limit, error) {
 	var l Limit
 	var at time.Time
 	err := row.Scan(&l.ID, &l.PartnerID, &l.LegalEntityID, &l.Currency, &l.Limit, &l.State, &l.OrderExposure,
 		&l.ReceivableExposure, &l.Used, &l.Available, &l.Version, &at)
-	l.UpdatedAt = canon.Time(at)
+	l.UpdatedAt, l.ReceivablesTracked = canon.Time(at), receivablesTracked
 	return l, err
 }
 
