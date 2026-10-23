@@ -105,7 +105,8 @@ message Branch {
   string currency = 6;
   string amount = 7;
   string consumed = 8;
-  // rejected for over_limit: what was available when the hold was decided
+  // what was available when the hold was decided, before this branch: set on every branch decided against a
+  // limit (held or rejected), empty for a customer without credit control
   string available = 9;
   // RFC 3339; held only
   string hold_expires_at = 10;

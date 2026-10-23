@@ -508,7 +508,8 @@ type Branch struct {
 	Currency      string `protobuf:"bytes,6,opt,name=currency,proto3" json:"currency,omitempty"`
 	Amount        string `protobuf:"bytes,7,opt,name=amount,proto3" json:"amount,omitempty"`
 	Consumed      string `protobuf:"bytes,8,opt,name=consumed,proto3" json:"consumed,omitempty"`
-	// rejected for over_limit: what was available when the hold was decided
+	// what was available when the hold was decided, before this branch: set on every branch decided against a
+	// limit (held or rejected), empty for a customer without credit control
 	Available string `protobuf:"bytes,9,opt,name=available,proto3" json:"available,omitempty"`
 	// RFC 3339; held only
 	HoldExpiresAt string `protobuf:"bytes,10,opt,name=hold_expires_at,json=holdExpiresAt,proto3" json:"hold_expires_at,omitempty"`
