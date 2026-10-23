@@ -12,6 +12,7 @@
 | `credit/branches.go` | 预占分支：`Hold`、`Confirm`、`Cancel`、`Query`、`Consume`，释放（`release`），加锁顺序（`lockBranch`），暂存到期的工作项，`Available` |
 | `credit/records.go` | 记录的类型、读取与事件 |
 | `credit/migrations/` | 表 |
+| `cmd/seed/` | 种子：角色与授予、三个法人的政策、客户的额度（大、中、小、不受控制、没有额度、暂停的反例）（`make seed`） |
 | `contract/` | 本组件发布的契约，单独的模块：`contract/proto/`、`contract/events/`、`contract/openapi.yaml` |
 | `docs/` | 设计 |
 
