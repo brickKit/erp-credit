@@ -95,6 +95,8 @@
 
 ## 实现状态
 
+3.0.18（底层先行第 4 项 T9 的级联）：be-sdk-go alpha.87（重放、恢复阶段 `replaying`、转发器停止时放弃租约）；清单的 `RECOVERY_PHASE` 加 `replaying`。依赖：mdm/currency@3.0.17 → mdm/currency@3.0.18 mdm/org@3.0.17 → mdm/org@3.0.19 mdm/partner@3.0.21 → mdm/partner@3.0.22。
+
 3.0.17（底层先行第 4 项 T8 的级联）：be-sdk-go alpha.81（恢复模式、补发与消费者进度）；流的补发（`be.source.v1.ResendService`，操作 `erp.credit.system.resend`，登记在本组件的 system 资源下，部署内任何组件可调用，线协议 P6.38）；清单声明 `RECOVERY_PHASE`。
 
 实验第 7 步：信用政策、额度的维护、预占分支的预占、确认、取消、查询、消耗、可用额度查询、额度与分支的状态事件、超限事件。答“能力不支持”的：应收占用与它的转换（订阅已出账与应收事实）、临时额度与例外放行、分支的调整、期初。
