@@ -298,6 +298,9 @@ func TestCreditEndToEnd(t *testing.T) {
 	assert.Equal(t, "2000", av.Limit)
 	assert.Equal(t, "suspended", av.State)
 	assert.False(t, av.ReceivablesTracked)
+
+	t.Run("recovery checks", func(t *testing.T) { checksStory(t, w, admin, Limits, lim["id"].(string)) })
+	t.Run("recovery checks of a policy", func(t *testing.T) { checksStory(t, w, admin, Policies, le) })
 }
 
 type client struct {
