@@ -7,6 +7,7 @@
 | 位置 | 内容 |
 | --- | --- |
 | `credit/definition.go` | 组件定义：身份、依赖、流与事件类型、资源与操作、法人维度、暂存期限 |
+| `credit/checks.go` | 整套恢复的核对（线协议第 14 章，SDK 的 `CheckService`，只许恢复工具调用）：本组件审计过的对象按版本答“还在不在”（`Presence`） |
 | `credit/module.go` | 路由与系统面的注册、本组件的错误原因、金额的校验、取法人、客户资格与币种（事务外） |
 | `credit/limits.go` | 政策与额度的读取、设置、修改，用户面的列表 |
 | `credit/branches.go` | 预占分支：`Hold`、`Confirm`、`Cancel`、`Query`、`Consume`，释放（`release`），加锁顺序（`lockBranch`），暂存到期的工作项，`Available` |
