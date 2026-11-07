@@ -122,6 +122,7 @@ func TestCreditEndToEnd(t *testing.T) {
 	fx.racingHolds()
 	fx.branchLifecycle()
 	fx.lateAndExpired()
+	fx.participant()
 	fx.suspendedLimit()
 	fx.recoveryChecks()
 }
