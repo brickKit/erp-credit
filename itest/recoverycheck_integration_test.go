@@ -1,11 +1,13 @@
 //go:build integration
 
-package credit
+package itest
 
 import (
 	"context"
 	"strconv"
 	"testing"
+
+	core "github.com/brickKit/erp-credit/v3/internal/core"
 
 	"github.com/brickKit/be-sdk-go/v3/ids"
 	"github.com/brickKit/be-sdk-go/v3/recoverypb"
@@ -25,7 +27,7 @@ import (
 func checksStory(t *testing.T, w *sectest.World, admin *pgx.Conn, typ, id string) {
 	ctx := context.Background()
 	dial := func(as string) recoverypb.CheckServiceClient {
-		conn, err := grpc.NewClient(itSystem, grpc.WithTransportCredentials(credentials.NewTLS(w.TLS(t, as).ClientConfig(ID))))
+		conn, err := grpc.NewClient(itSystem, grpc.WithTransportCredentials(credentials.NewTLS(w.TLS(t, as).ClientConfig(core.ID))))
 		require.NoError(t, err)
 		t.Cleanup(func() { conn.Close() })
 		return recoverypb.NewCheckServiceClient(conn)
@@ -51,4 +53,11 @@ func checksStory(t *testing.T, w *sectest.World, admin *pgx.Conn, typ, id string
 		answers = append(answers, a.GetAnswer())
 	}
 	assert.Equal(t, []string{"present", "older", "absent"}, answers)
+}
+
+// recoveryChecks: a full recovery's checks against this member, for a limit and a policy.
+func (fx *fixture) recoveryChecks() {
+	t := fx.t
+	t.Run("recovery checks", func(t *testing.T) { checksStory(t, fx.w, fx.admin, core.Limits, fx.lim["id"].(string)) })
+	t.Run("recovery checks of a policy", func(t *testing.T) { checksStory(t, fx.w, fx.admin, core.Policies, fx.le) })
 }

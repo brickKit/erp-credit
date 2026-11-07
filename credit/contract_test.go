@@ -6,6 +6,8 @@ import (
 	"os"
 	"testing"
 
+	core "github.com/brickKit/erp-credit/v3/internal/core"
+
 	"github.com/brickKit/be-sdk-go/v3/httpx"
 	"github.com/brickKit/be-sdk-go/v3/launcher"
 	"github.com/brickKit/be-sdk-go/v3/mergesafety"
@@ -46,13 +48,13 @@ func TestThePayloadsFitTheirSchemas(t *testing.T) {
 	at, amt, cur, lim, avail, rev := "2026-10-20T08:00:00.000000Z", "1200.5", "CNY", "5000", "-200", int64(1)
 	reason := "over_limit"
 	for typ, v := range map[string]any{
-		PolicyChanged: Policy{ID: le, LegalEntityID: le, WithoutLimit: "block", Version: 1, UpdatedAt: at},
-		LimitChanged: Limit{ID: br, PartnerID: pa, LegalEntityID: le, Currency: cur, Limit: &lim, State: "active",
+		core.PolicyChanged: core.Policy{ID: le, LegalEntityID: le, WithoutLimit: "block", Version: 1, UpdatedAt: at},
+		core.LimitChanged: core.Limit{ID: br, PartnerID: pa, LegalEntityID: le, Currency: cur, Limit: &lim, State: "active",
 			OrderExposure: "5200", ReceivableExposure: "0", Used: "5200", Available: &avail, Version: 4, UpdatedAt: at},
-		BranchChanged: Branch{ID: br, PartnerID: &pa, LegalEntityID: &le, Currency: &cur, Amount: &amt, Consumed: &amt,
-			Reference: &Reference{Kind: "sales_order", ID: "SO-1", Revision: &rev}, State: "rejected", Reason: &reason,
+		core.BranchChanged: core.Branch{ID: br, PartnerID: &pa, LegalEntityID: &le, Currency: &cur, Amount: &amt, Consumed: &amt,
+			Reference: &core.Reference{Kind: "sales_order", ID: "SO-1", Revision: &rev}, State: "rejected", Reason: &reason,
 			Version: 1, UpdatedAt: at},
-		LimitExceeded: map[string]any{"fact_id": br, "partner_id": pa, "legal_entity_id": le, "currency": cur,
+		core.LimitExceeded: map[string]any{"fact_id": br, "partner_id": pa, "legal_entity_id": le, "currency": cur,
 			"requested": amt, "available": "300", "reference": nil, "occurred_at": at},
 	} {
 		c := jsonschema.NewCompiler()
@@ -66,8 +68,8 @@ func TestThePayloadsFitTheirSchemas(t *testing.T) {
 	}
 	// a customer outside credit control, and a tombstone
 	for typ, v := range map[string]any{
-		LimitChanged:  Limit{ID: br, PartnerID: pa, LegalEntityID: le, Currency: cur, State: "active", OrderExposure: "10", ReceivableExposure: "0", Used: "10", Version: 1, UpdatedAt: at},
-		BranchChanged: Branch{ID: br, State: "cancelled", Version: 1, UpdatedAt: at},
+		core.LimitChanged:  core.Limit{ID: br, PartnerID: pa, LegalEntityID: le, Currency: cur, State: "active", OrderExposure: "10", ReceivableExposure: "0", Used: "10", Version: 1, UpdatedAt: at},
+		core.BranchChanged: core.Branch{ID: br, State: "cancelled", Version: 1, UpdatedAt: at},
 	} {
 		c := jsonschema.NewCompiler()
 		s, err := c.Compile("../contract/events/" + typ + ".schema.json")

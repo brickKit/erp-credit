@@ -4,42 +4,49 @@
 
 ## 代码地图
 
-| 位置 | 内容 |
+代码按业务模块分层。**先读这一节，再进目录**：每个代码目录都有自己的 `AGENTS.md`（同目录的 `CLAUDE.md` 让 Claude Code 读这个目录的文件时自动带上它），写这一层负责什么、不负责什么、每个文件、依赖谁、测在哪。
+
+| 目录 | 是什么 |
 | --- | --- |
-| `credit/definition.go` | 组件定义：身份、依赖、流与事件类型、资源与操作、法人维度、暂存期限 |
-| `credit/checks.go` | 整套恢复的核对（线协议第 14 章，SDK 的 `CheckService`，只许恢复工具调用）：本组件审计过的对象按版本答“还在不在”（`Presence`） |
-| `credit/module.go` | 路由与系统面的注册、本组件的错误原因、金额的校验、取法人、客户资格与币种（事务外） |
-| `credit/limits.go` | 政策与额度的读取、设置、修改，用户面的列表 |
-| `credit/branches.go` | 预占分支：`Hold`、`Confirm`、`Cancel`、`Query`、`Consume`，释放（`release`），加锁顺序（`lockBranch`），暂存到期的工作项，`Available` |
-| `credit/records.go` | 记录的类型、读取与事件 |
+| [`credit/`](credit/AGENTS.md) | 入口：组件定义与组装（路由、系统面、后台工作、恢复核对都在这里登记，转给业务模块）；不写业务。`main.go` 与外壳只引用它 |
+| [`internal/`](internal/AGENTS.md) | 业务：下面的模块各一个包；模块之间的依赖表在它的 `AGENTS.md` |
+| [`itest/`](itest/AGENTS.md) | 集成测试，按业务流程分文件；它的 `AGENTS.md` 是测试索引 |
 | `credit/migrations/` | 表 |
 | `cmd/seed/` | 种子：角色与授予、三个法人的政策、客户的额度（大、中、小、不受控制、没有额度、暂停的反例）（`make seed`） |
 | `contract/` | 本组件发布的契约，单独的模块：`contract/proto/`、`contract/events/`、`contract/openapi.yaml` |
 | `docs/` | 设计 |
 
+业务模块（`internal/` 下）：
+
+| 模块 | 负责 | 拥有的表 |
+| --- | --- | --- |
+| [`limits`](internal/limits/AGENTS.md) | 法人的政策与客户的额度：读取、设置、修改、列表 | `credit_policy`、`credit_limit` |
+| [`branches`](internal/branches/AGENTS.md) | 预占分支（协议 04，本组件是参与方）：预占、确认、取消、查询、消耗、暂存到期；可用额度 | `branch`、`consumption` |
+
+共用的：[`masterdata`](internal/masterdata/AGENTS.md)（事务外向 `mdm/org`、`mdm/partner`、`mdm/currency` 取证）、[`core`](internal/core/AGENTS.md)（名字与资源定义、校验、审计与事件的写法、记录的类型与读取）。
+
 | 想改 | 从这里开始 | 然后 |
 | --- | --- | --- |
-| 预占、拒绝原因、没有额度时的政策 | `docs/design.md` 的“每个命令改什么” | `branches.go` 的 `Hold`、集成测试 |
-| 应收占用的转换（协议 05） | `docs/design.md` 的实现状态 | `Consume` 与新的订阅（已出账） |
-| 一个维度、一个操作 | `definition.go` | `BRICKKIT.md` 的契约索引 |
+| 预占、拒绝原因、没有额度时的政策 | `docs/design.md` 的“每个命令改什么” | `internal/branches` 的 `Hold`；`itest/branches_integration_test.go`、`itest/policies_integration_test.go` |
+| 应收占用的转换（协议 05） | `docs/design.md` 的实现状态 | `internal/branches` 的 `Consume` 与新的订阅（已出账） |
+| 一个维度、一个操作 | `internal/core/names.go` | `BRICKKIT.md` 的契约索引；路由的登记在 `credit/module.go` |
 | 加字段、加接口、改事件 | 装配项目 be-assembly-standard 规范里的“改动配方” | `docs/design.md` 的数据与命令 |
 
 ## 构建与测试
 
 - `go test ./...`（`make test`）：清单的 `configSchema` 与 `events`、OpenAPI 与路由、事件载荷、合并安全。
-- `go test -tags integration ./credit/`（`make test-integration`）：真实的 PostgreSQL 与消息系统（`BE_SDK_TEST_PG_ADMIN`、`BE_SDK_TEST_NATS_URL`，同 `erp/inventory`）；`mdm/org`、`mdm/partner`、`mdm/currency` 是按契约写的替身，测试以 `erp/sales` 的身份调用系统面。
-- 集成测试的前提：`make up` 起了 `be-postgres` 与 `be-nats`，库 `brickkit_test_db` 存在；schema `erp_credit_it` 每次重建；端口 28088、9088 与替身的 19099、19100、19101 要空着。
+- `make test-integration`（`go test -tags integration ./itest/`）：真实的 PostgreSQL 与消息系统；每个文件测哪条流程、要什么前提，在 [itest/AGENTS.md](itest/AGENTS.md)。
 - `brickkit lint`
 
 ## 设计取舍
 
-- **额度行是唯一的裁决点**：每个分支只涉及一个额度行，所有命令先锁额度行、再锁分支行（`lockBranch`），新分支先插入分支行再锁额度行（别人在它提交前看不到这个分支），所以不死锁。
+- **额度行是唯一的裁决点**：每个分支只涉及一个额度行，所有命令先锁额度行、再锁分支行（`internal/branches` 的 `lockBranch`），新分支先插入分支行再锁额度行（别人在它提交前看不到这个分支），所以不死锁。
 - **不受控制也参加**：装了信用，销售的确认总有信用分支；不受控制的客户用空额度表达，占用照记，以后设了额度立即生效。
 - **超限是事实，不是状态**：每次因超限拒绝发一条 `erp.credit_limit.exceeded.v1`，事实身份是分支身份。
 
 ## 易错点
 
-- 不要在事务里调主数据：先取（`currencyScale`、`customerEligible`、`legalEntityActive`），再开事务。
+- 不要在事务里调主数据：先取（`internal/masterdata`），再开事务。
 - 金额只在 SQL 里比较与加减；额度、占用的列是 `NUMERIC(19,4)`，金额按币种的小数位校验。
 
 ## 改代码前自查

@@ -1,4 +1,4 @@
-package credit
+package core
 
 import (
 	"context"
@@ -60,14 +60,14 @@ type Branch struct {
 	Version       int64      `json:"version"`
 	UpdatedAt     string     `json:"updated_at"`
 
-	limitID   *string
-	available *string
-	digest    *string
+	LimitID   *string `json:"-"`
+	Available *string `json:"-"`
+	Digest    *string `json:"-"`
 }
 
 const (
-	policyCols = `p.legal_entity_id::text, p.without_limit, p.version, p.updated_at`
-	limitCols  = `c.id::text, c.partner_id::text, c.legal_entity_id::text, c.currency, trim_scale(c.amount)::text, c.state,
+	PolicyCols = `p.legal_entity_id::text, p.without_limit, p.version, p.updated_at`
+	LimitCols  = `c.id::text, c.partner_id::text, c.legal_entity_id::text, c.currency, trim_scale(c.amount)::text, c.state,
 		trim_scale(c.order_exposure)::text, trim_scale(c.receivable_exposure)::text,
 		trim_scale(c.order_exposure + c.receivable_exposure)::text,
 		trim_scale(c.amount - c.order_exposure - c.receivable_exposure)::text, c.version, c.updated_at`
@@ -77,7 +77,7 @@ const (
 		b.content_digest`
 )
 
-func scanPolicy(row pgx.Row) (Policy, error) {
+func ScanPolicy(row pgx.Row) (Policy, error) {
 	var p Policy
 	var at time.Time
 	err := row.Scan(&p.LegalEntityID, &p.WithoutLimit, &p.Version, &at)
@@ -89,7 +89,7 @@ func scanPolicy(row pgx.Row) (Policy, error) {
 // "used" is the order exposure only (docs/design.md, implementation status); a limit says so.
 const receivablesTracked = false
 
-func scanLimit(row pgx.Row) (Limit, error) {
+func ScanLimit(row pgx.Row) (Limit, error) {
 	var l Limit
 	var at time.Time
 	err := row.Scan(&l.ID, &l.PartnerID, &l.LegalEntityID, &l.Currency, &l.Limit, &l.State, &l.OrderExposure,
@@ -105,7 +105,7 @@ func scanBranch(row pgx.Row) (Branch, error) {
 	var expires *time.Time
 	var at time.Time
 	err := row.Scan(&b.ID, &b.PartnerID, &b.LegalEntityID, &b.Currency, &b.Amount, &b.Consumed, &refKind, &refID, &refRev,
-		&b.State, &b.Reason, &expires, &b.Version, &at, &b.limitID, &b.available, &b.digest)
+		&b.State, &b.Reason, &expires, &b.Version, &at, &b.LimitID, &b.Available, &b.Digest)
 	if err != nil {
 		return b, err
 	}
@@ -121,44 +121,44 @@ func scanBranch(row pgx.Row) (Branch, error) {
 }
 
 // errNone is a lookup that found no row.
-var errNone = errors.New("no such record")
+var ErrNone = errors.New("no such record")
 
-func one[T any](row pgx.Row, scan func(pgx.Row) (T, error)) (T, error) {
+func One[T any](row pgx.Row, scan func(pgx.Row) (T, error)) (T, error) {
 	v, err := scan(row)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return v, errNone
+		return v, ErrNone
 	}
 	return v, err
 }
 
-func getLimit(ctx context.Context, tx db.Tx, id string, lock bool) (Limit, error) {
-	q := `SELECT ` + limitCols + ` FROM credit_limit c WHERE c.id = $1::uuid`
+func GetLimit(ctx context.Context, tx db.Tx, id string, lock bool) (Limit, error) {
+	q := `SELECT ` + LimitCols + ` FROM credit_limit c WHERE c.id = $1::uuid`
 	if lock {
 		q += ` FOR UPDATE`
 	}
-	return one(tx.QueryRow(ctx, q, id), scanLimit)
+	return One(tx.QueryRow(ctx, q, id), ScanLimit)
 }
 
-func getBranch(ctx context.Context, tx db.Tx, id string, lock bool) (Branch, error) {
+func GetBranch(ctx context.Context, tx db.Tx, id string, lock bool) (Branch, error) {
 	q := `SELECT ` + branchCols + ` FROM branch b WHERE b.id = $1::uuid`
 	if lock {
 		q += ` FOR UPDATE`
 	}
-	return one(tx.QueryRow(ctx, q, id), scanBranch)
+	return One(tx.QueryRow(ctx, q, id), scanBranch)
 }
 
-// emit writes a full-state event into the outbox, in the transaction that changed the record (protocol 02, S2).
-func (m *Module) emit(ctx context.Context, tx db.Tx, typ, id string, version int64, data any) error {
-	_, err := m.rt.Events.Emit(ctx, tx, Stream, events.Event{Type: typ, RecordID: id, Version: version,
+// Emit writes a full-state event into the outbox, in the transaction that changed the record (protocol 02, S2).
+func Emit(m *Base, ctx context.Context, tx db.Tx, typ, id string, version int64, data any) error {
+	_, err := m.RT.Events.Emit(ctx, tx, Stream, events.Event{Type: typ, RecordID: id, Version: version,
 		Projection: events.Full, Data: data})
 	return err
 }
 
-// emitLimit publishes a limit's state after its row changed.
-func (m *Module) emitLimit(ctx context.Context, tx db.Tx, id string) (Limit, error) {
-	l, err := getLimit(ctx, tx, id, false)
+// EmitLimit publishes a limit's state after its row changed.
+func EmitLimit(m *Base, ctx context.Context, tx db.Tx, id string) (Limit, error) {
+	l, err := GetLimit(ctx, tx, id, false)
 	if err != nil {
 		return l, err
 	}
-	return l, m.emit(ctx, tx, LimitChanged, l.ID, l.Version, l)
+	return l, Emit(m, ctx, tx, LimitChanged, l.ID, l.Version, l)
 }
