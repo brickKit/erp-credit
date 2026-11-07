@@ -21,7 +21,7 @@
 | 模块 | 负责 | 拥有的表 |
 | --- | --- | --- |
 | [`limits`](internal/limits/AGENTS.md) | 法人的政策与客户的额度：读取、设置、修改、列表 | `credit_policy`、`credit_limit` |
-| [`branches`](internal/branches/AGENTS.md) | 预占分支（协议 04，本组件是参与方）：预占、确认、取消、查询、消耗、暂存到期；可用额度 | `branch`、`consumption` |
+| [`branches`](internal/branches/AGENTS.md) | 预占分支（协议 04，本组件是参与方；状态机在 SDK 的 `reserve`）：预占、确认、取消、查询、消耗、暂存到期；可用额度 | `branch`、`consumption`（分支的状态在 SDK 的 `be_reserve_branch`） |
 
 共用的：[`masterdata`](internal/masterdata/AGENTS.md)（事务外向 `mdm/org`、`mdm/partner`、`mdm/currency` 取证）、[`core`](internal/core/AGENTS.md)（名字与资源定义、校验、审计与事件的写法、记录的类型与读取）。
 
@@ -34,13 +34,14 @@
 
 ## 构建与测试
 
-- `go test ./...`（`make test`）：清单的 `configSchema` 与 `events`、OpenAPI 与路由、事件载荷、合并安全。
+- `go test ./...`（`make test`）：清单的 `configSchema` 与 `events`、OpenAPI 与路由、事件载荷、合并安全、结构检查（`credit/structure_test.go`）。
 - `make test-integration`（`go test -tags integration ./itest/`）：真实的 PostgreSQL 与消息系统；每个文件测哪条流程、要什么前提，在 [itest/AGENTS.md](itest/AGENTS.md)。
 - `brickkit lint`
 
 ## 设计取舍
 
-- **额度行是唯一的裁决点**：每个分支只涉及一个额度行，所有命令先锁额度行、再锁分支行（`internal/branches` 的 `lockBranch`），新分支先插入分支行再锁额度行（别人在它提交前看不到这个分支），所以不死锁。
+- **额度行是唯一的裁决点**：每个分支只涉及一个额度行，所有命令先锁额度行、再锁分支行（SDK 的 `reserve`，线协议 P16.11），新分支先写下分支再锁额度行（别人在它提交前看不到这个分支），所以不死锁。
+- **分支的状态机在 SDK**：协议 04 参与方的规则只实现一次（be-sdk-go 的 `reserve`），本组件只写占用、退回与消耗；订单占用只经 `limits` 的三个函数写。
 - **不受控制也参加**：装了信用，销售的确认总有信用分支；不受控制的客户用空额度表达，占用照记，以后设了额度立即生效。
 - **超限是事实，不是状态**：每次因超限拒绝发一条 `erp.credit_limit.exceeded.v1`，事实身份是分支身份。
 

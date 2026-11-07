@@ -71,10 +71,12 @@ const (
 		trim_scale(c.order_exposure)::text, trim_scale(c.receivable_exposure)::text,
 		trim_scale(c.order_exposure + c.receivable_exposure)::text,
 		trim_scale(c.amount - c.order_exposure - c.receivable_exposure)::text, c.version, c.updated_at`
-	branchCols = `b.id::text, b.partner_id::text, b.legal_entity_id::text, b.currency, trim_scale(b.amount)::text,
+	// a branch is the SDK's participant record (be_reserve_branch: state, reason, digest, hold period, version, times)
+	// with what it takes here (branch; none on a tombstone)
+	branchCols = `r.id::text, b.partner_id::text, b.legal_entity_id::text, b.currency, trim_scale(b.amount)::text,
 		CASE WHEN b.amount IS NULL THEN NULL ELSE trim_scale(b.consumed)::text END, b.ref_kind, b.ref_id, b.ref_revision,
-		b.state, b.reason, b.hold_expires_at, b.version, b.updated_at, b.limit_id::text, trim_scale(b.available)::text,
-		b.content_digest`
+		r.state, r.reason, r.hold_expires_at, r.version, r.updated_at, b.limit_id::text, trim_scale(b.available)::text,
+		r.content_digest`
 )
 
 func ScanPolicy(row pgx.Row) (Policy, error) {
@@ -140,9 +142,9 @@ func GetLimit(ctx context.Context, tx db.Tx, id string, lock bool) (Limit, error
 }
 
 func GetBranch(ctx context.Context, tx db.Tx, id string, lock bool) (Branch, error) {
-	q := `SELECT ` + branchCols + ` FROM branch b WHERE b.id = $1::uuid`
+	q := `SELECT ` + branchCols + ` FROM be_reserve_branch r LEFT JOIN branch b ON b.id = r.id WHERE r.id = $1::uuid`
 	if lock {
-		q += ` FOR UPDATE`
+		q += ` FOR UPDATE OF r`
 	}
 	return One(tx.QueryRow(ctx, q, id), scanBranch)
 }

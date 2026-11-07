@@ -7,7 +7,7 @@
 | 包 | 一句话 | 依赖（本组件内） |
 | --- | --- | --- |
 | `limits` | 政策与额度：读取、设置、修改、列表 | `core`、`masterdata` |
-| `branches` | 预占分支与可用额度 | `core`、`limits` |
+| `branches` | 预占分支（状态机在 SDK 的 `reserve`）与可用额度 | `core`、`limits` |
 | `masterdata`（共用） | 事务外向主数据组件取证：法人、客户资格、币种小数位 | `core` |
 | `core`（共用） | 名字与资源定义、校验、审计与事件、记录、`Base` | — |
 
@@ -16,7 +16,8 @@
 ## 共同的写法
 
 - 每个模块的函数先收 `m *core.Base`（组件的运行时），入口包的 `Module` 持有它、登记时适配。
-- 额度行是唯一的裁决点：每个命令先锁额度行、再锁分支行（`branches` 的 `lockBranch`），不死锁。
+- 额度行是唯一的裁决点：每个命令先锁额度行、再锁分支行（SDK 的 `reserve` 照线协议 P16.11 的顺序，额度行由 `branches` 的 `Kind.Lock` 锁），不死锁。
+- **规则只在一处**（`credit/structure_test.go` 检查）：分支的状态只由 SDK 的 `reserve` 写；订单占用只由 `limits/exposure.go` 写。
 - 事务外取证、事务内写：主数据的调用都在 `masterdata`，在事务之前；写入、审计（`core.Change`）与发件表（`core.Emit`）同一个事务。
 
 ## 测试
