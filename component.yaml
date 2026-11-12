@@ -4,15 +4,15 @@ kind: Component
 metadata:
   id: erp/credit
   name: Credit
-  version: 3.0.38
+  version: 3.0.39
   description: "Credit policies and limits by partner, legal entity and currency, order exposure, and the participant side of protocol 04's credit reservation branches; a customer outside credit control is a limit without an amount"
   repository: https://github.com/brickKit/erp-credit
 
 dependencies:
   components:
-    - mdm/currency@3.0.33
-    - mdm/org@3.0.35
-    - mdm/partner@3.0.40
+    - mdm/currency@3.0.34
+    - mdm/org@3.0.36
+    - mdm/partner@3.0.41
 
 events:
   publishes:
